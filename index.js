@@ -37,6 +37,10 @@ async function updatePRs () {
     const repo = await gh.getRepo(await ask('username', 'GitHub username'), await ask('repo', 'GitHub repository'));
     const old = await ask('old', 'Old base branch');
     const branch = await ask('branch', 'New base branch');
+    if(old === branch) {
+        console.log('New branch cannot be the same as the old branch');
+        return;
+    }
 
     let response;
     let updated = 0;
