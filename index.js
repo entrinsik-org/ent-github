@@ -21,7 +21,8 @@ async function ask (name, message, type = 'text') {
     const result = await prompts({
         type: type,
         name: name,
-        message: message
+        message: message,
+        validate: value => !!value
     });
     return result[name];
 }
@@ -34,15 +35,25 @@ async function ask (name, message, type = 'text') {
 async function updatePRs () {
     const gh = new GitHub({ token: await ask('token', 'GitHub OAUTH token') });
     const repo = await gh.getRepo(await ask('username', 'GitHub username'), await ask('repo', 'GitHub repository'));
-    const response = await repo.listPullRequests({ state: 'open', base: await ask('old', 'Old base branch') });
-    if(response.data.length < 1) {
-        console.log('No PRs were found matching the old base branch');
-        return;
-    }
+    const old = await ask('old', 'Old base branch');
     const branch = await ask('branch', 'New base branch');
-    console.log(`Updating ${response.data.length} PRs...`);
-    const prs = await Promise.all(response.data.map(pr => repo.updatePullRequest(pr.number, { base: branch })));
-    console.log(`Finished updating ${prs ? prs.length : 0 } PRs to the new base branch`);
+
+    let response;
+    let updated = 0;
+    do {
+        response = await repo.listPullRequests({ state: 'open', base: old });
+        if (!response.data.length) {
+            console.log(`${updated === 0 ? 'No' : 'No more'} open PRs were found for branch ${old}`);
+            break;
+        }
+        console.log(`Updating ${response.data.length} PRs to base branch ${branch}...`);
+        await Promise.all(response.data.map(pr => repo.updatePullRequest(pr.number, { base: branch })));
+        console.log(response.data.length === 30 ? `Done. Checking for more PRs...` : 'Done.');
+        updated += response.data.length;
+    }
+    while (response.data.length === 30);
+    if (updated) console.log(`Finished updating ${updated} PRs to base branch ${branch}`);
+
 }
 
 /**
