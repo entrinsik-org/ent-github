@@ -15,7 +15,7 @@ const config = nconf.get();
  */
 async function ask (name, message, type = 'text') {
     if (config[name]) {
-        console.log(`${message}: ${name}`);
+        console.log(`${message}: ${config[name]}`);
         return config[name];
     }
     const result = await prompts({
